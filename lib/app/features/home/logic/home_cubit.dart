@@ -24,7 +24,7 @@ class HomeState {
 
   factory HomeState.initial() => const HomeState(
     lines: [
-      TerminalLine('NEXUS // SECURE CONSOLE v2.7.4', Color(0xff78f5c0)),
+      TerminalLine('USER // SECURE CONSOLE v2.7.4', Color(0xff78f5c0)),
       TerminalLine(
         'Connection established. Waiting for input...',
         Color(0xff81909d),
@@ -35,7 +35,7 @@ class HomeState {
     progress: 0,
     isRunning: false,
     lastCommand: '',
-    chartValues: const [],
+    chartValues: [],
     chartMax: 0,
   );
 
@@ -224,7 +224,7 @@ class HomeCubit extends Cubit<HomeState> {
         lines: [
           ...state.lines,
           TerminalLine(
-            'operator@ nexus:~ % $command',
+            'operator@user:~ % $command',
             const Color(0xff78f5c0),
             isCommand: true,
           ),

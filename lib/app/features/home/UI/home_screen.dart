@@ -163,21 +163,34 @@ class _TerminalPanelState extends State<_TerminalPanel> {
                 color: const Color(0xff0c131a),
                 border: Border.all(color: const Color(0xff1c2a34)),
               ),
-              child: ListView.builder(
-                controller: _scrollController,
-                itemCount: widget.state.lines.length,
-                itemBuilder: (context, index) {
-                  final line = widget.state.lines[index];
-                  return Text(
-                    line.text.isEmpty ? ' ' : line.text,
-                    style: textStyle?.copyWith(
-                      color: line.color,
-                      fontWeight: line.isCommand
-                          ? FontWeight.w700
-                          : FontWeight.w400,
+              child: Column(
+                children: [
+                  if (widget.state.chartValues.isNotEmpty) ...[
+                    _ChartCard(
+                      values: widget.state.chartValues,
+                      maxValue: widget.state.chartMax,
                     ),
-                  );
-                },
+                    const SizedBox(height: 14),
+                  ],
+                  Expanded(
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      itemCount: widget.state.lines.length,
+                      itemBuilder: (context, index) {
+                        final line = widget.state.lines[index];
+                        return Text(
+                          line.text.isEmpty ? ' ' : line.text,
+                          style: textStyle?.copyWith(
+                            color: line.color,
+                            fontWeight: line.isCommand
+                                ? FontWeight.w700
+                                : FontWeight.w400,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -267,4 +280,113 @@ class _ProgressBar extends StatelessWidget {
       ),
     ],
   );
+}
+
+class _ChartCard extends StatelessWidget {
+  const _ChartCard({required this.values, required this.maxValue});
+
+  final List<double> values;
+  final double maxValue;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 188,
+    padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+    decoration: BoxDecoration(
+      color: const Color(0xff101a22),
+      border: Border.all(color: const Color(0xff234037)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text(
+              'SIGNAL / LIVE PLOT',
+              style: TextStyle(
+                color: Color(0xff78f5c0),
+                fontFamily: 'monospace',
+                fontSize: 10,
+                letterSpacing: 1,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              'MAX ${maxValue.toStringAsFixed(2)}',
+              style: const TextStyle(
+                color: Color(0xff81909d),
+                fontFamily: 'monospace',
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: CustomPaint(
+            painter: _ChartPainter(values: values, maxValue: maxValue),
+            child: const SizedBox.expand(),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ChartPainter extends CustomPainter {
+  _ChartPainter({required this.values, required this.maxValue});
+
+  final List<double> values;
+  final double maxValue;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final gridPaint = Paint()
+      ..color = const Color(0xff234037)
+      ..strokeWidth = 1;
+    final linePaint = Paint()
+      ..color = const Color(0xff78f5c0)
+      ..strokeWidth = 2.2
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    final glowPaint = Paint()
+      ..color = const Color(0xff78f5c0).withValues(alpha: .12)
+      ..style = PaintingStyle.fill;
+
+    for (var row = 0; row <= 4; row++) {
+      final y = size.height * row / 4;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
+    for (var column = 0; column <= 6; column++) {
+      final x = size.width * column / 6;
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
+    }
+
+    if (values.length < 2 || maxValue <= 0) return;
+    final points = <Offset>[];
+    for (var index = 0; index < values.length; index++) {
+      final x = size.width * index / (values.length - 1);
+      final y = size.height - (values[index] / maxValue * size.height);
+      points.add(Offset(x, y.clamp(0, size.height).toDouble()));
+    }
+
+    final linePath = Path()..moveTo(points.first.dx, points.first.dy);
+    for (final point in points.skip(1)) {
+      linePath.lineTo(point.dx, point.dy);
+    }
+    final fillPath = Path.from(linePath)
+      ..lineTo(points.last.dx, size.height)
+      ..lineTo(points.first.dx, size.height)
+      ..close();
+    canvas.drawPath(fillPath, glowPaint);
+    canvas.drawPath(linePath, linePaint);
+    for (final point in points) {
+      canvas.drawCircle(point, 2.8, linePaint..style = PaintingStyle.fill);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ChartPainter oldDelegate) =>
+      oldDelegate.values != values || oldDelegate.maxValue != maxValue;
 }
