@@ -1,6 +1,6 @@
 # HaniMD
 
-A Flutter terminal-style application for running interactive console commands and viewing network diagnostics.
+A Flutter terminal-style application for running interactive console commands.
 
 ## Features
 
@@ -9,14 +9,7 @@ A Flutter terminal-style application for running interactive console commands an
 - Chart and phone storage tree views
 - Built-in internet speed test screen
 
-## Commands
+## Future features
 
-`help` lists available commands. Use `scan`, `decrypt`, `trace`, `chart`, `tree`, or `clear` in the console.
-
-## Getting Started
-
-1. Install Flutter and confirm it is available with `flutter doctor`.
-2. Install dependencies: `flutter pub get`
-3. Run the app: `flutter run`
-
-The project supports Flutter desktop, Android, and iOS targets.
+- Built-in file manager
+- Built-in AI chatbot
