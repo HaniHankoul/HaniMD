@@ -106,7 +106,7 @@ class HomeCubit extends Cubit<HomeState> {
   void submit(String rawCommand) {
     final command = rawCommand.trim().toLowerCase();
     if (command.isEmpty || state.isRunning) return;
-    if (command == 'clear' || command == 'clr') {
+    if (command == 'clear') {
       emit(HomeState.initial().copyWith(lines: const []));
       return;
     }
@@ -117,7 +117,7 @@ class HomeCubit extends Cubit<HomeState> {
           lines: [
             ...state.lines,
             const TerminalLine(
-              ' commands: scan  decrypt  trace  clear  clr  chart  tree ',
+              ' commands: scan  decrypt  trace  clear  chart  tree ',
               Color(0xffffc857),
             ),
           ],
@@ -144,7 +144,7 @@ class HomeCubit extends Cubit<HomeState> {
     _timer?.cancel();
     var step = 0;
     emit(state.copyWith(progress: 0.04, isRunning: true, lastCommand: command));
-    _timer = Timer.periodic(const Duration(milliseconds: 520), (timer) {
+    _timer = Timer.periodic(const Duration(milliseconds: 250), (timer) {
       if (step >= output.length) {
         timer.cancel();
         emit(state.copyWith(progress: 1, isRunning: false));
