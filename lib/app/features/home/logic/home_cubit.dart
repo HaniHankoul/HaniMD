@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:path_provider/path_provider.dart';
 
 class TerminalLine {
   const TerminalLine(this.text, this.color, {this.isCommand = false});
@@ -115,7 +117,7 @@ class HomeCubit extends Cubit<HomeState> {
           lines: [
             ...state.lines,
             const TerminalLine(
-              'Available commands: scan  decrypt  trace  clear  clr',
+              ' commands: scan  decrypt  trace  clear  clr  chart  tree ',
               Color(0xffffc857),
             ),
           ],
@@ -127,6 +129,10 @@ class HomeCubit extends Cubit<HomeState> {
     final commandParts = command.split(RegExp(r'\s+'));
     if (commandParts.first == 'chart') {
       _startChart(commandParts);
+      return;
+    }
+    if (commandParts.first == 'tree') {
+      _startTree();
       return;
     }
     final output =
@@ -157,6 +163,144 @@ class HomeCubit extends Cubit<HomeState> {
         ),
       );
     });
+  }
+
+  void _startTree() {
+    unawaited(_loadPhoneTree());
+  }
+
+  Future<void> _loadPhoneTree() async {
+    _timer?.cancel();
+    emit(
+      state.copyWith(
+        lines: [
+          ...state.lines,
+          const TerminalLine(
+            'Resolving accessible phone storage paths ...',
+            Color(0xff62d9ff),
+          ),
+        ],
+        progress: 0.08,
+        isRunning: true,
+        lastCommand: 'tree',
+      ),
+    );
+
+    final roots = <Directory>[];
+    await _addRoot(roots, getApplicationDocumentsDirectory);
+    await _addRoot(roots, getApplicationSupportDirectory);
+    await _addRoot(roots, getTemporaryDirectory);
+    if (Platform.isAndroid) {
+      await _addRoot(roots, getExternalStorageDirectory);
+    }
+
+    final lines = <String>[];
+    var directoryCount = 0;
+    var fileCount = 0;
+    if (roots.isEmpty) {
+      lines.add('No accessible application directories were found.');
+    } else {
+      for (var index = 0; index < roots.length; index++) {
+        final root = roots[index];
+        lines.add(root.path);
+        final counts = await _appendDirectoryContents(
+          root,
+          lines,
+          prefix: '',
+          depth: 0,
+        );
+        directoryCount += counts.directories;
+        fileCount += counts.files;
+        if (index != roots.length - 1) lines.add('');
+      }
+      lines.add('$directoryCount directories, $fileCount files');
+    }
+
+    if (isClosed) return;
+    emit(
+      state.copyWith(
+        lines: [
+          ...state.lines,
+          ...lines.map((line) => TerminalLine(line, const Color(0xff62d9ff))),
+        ],
+        progress: 1,
+        isRunning: false,
+      ),
+    );
+  }
+
+  Future<void> _addRoot(
+    List<Directory> roots,
+    Future<Directory?> Function() provider,
+  ) async {
+    try {
+      final directory = await provider();
+      if (directory == null) return;
+      if (!roots.any((root) => root.path == directory.path)) {
+        roots.add(directory);
+      }
+    } on Object {
+      // Some platform directories are unavailable on specific targets.
+    }
+  }
+
+  Future<_TreeCounts> _appendDirectoryContents(
+    Directory directory,
+    List<String> lines, {
+    required String prefix,
+    required int depth,
+  }) async {
+    if (depth >= 3) return const _TreeCounts();
+
+    List<FileSystemEntity> children;
+    try {
+      children = await directory.list(followLinks: false).toList();
+    } on Object {
+      lines.add('$prefix└── [access denied]');
+      return const _TreeCounts();
+    }
+
+    children.sort((left, right) {
+      final leftIsDirectory = left is Directory;
+      final rightIsDirectory = right is Directory;
+      if (leftIsDirectory != rightIsDirectory) {
+        return leftIsDirectory ? -1 : 1;
+      }
+      return left.path.toLowerCase().compareTo(right.path.toLowerCase());
+    });
+
+    var directoryCount = 0;
+    var fileCount = 0;
+    for (var index = 0; index < children.length; index++) {
+      final child = children[index];
+      final isLast = index == children.length - 1;
+      final branch = isLast ? '└── ' : '├── ';
+      final childPrefix = '$prefix${isLast ? '    ' : '│   '}';
+      lines.add('$prefix$branch${_entityName(child)}');
+
+      if (child is Directory) {
+        directoryCount++;
+        final nestedCounts = await _appendDirectoryContents(
+          child,
+          lines,
+          prefix: childPrefix,
+          depth: depth + 1,
+        );
+        directoryCount += nestedCounts.directories;
+        fileCount += nestedCounts.files;
+      } else {
+        fileCount++;
+      }
+    }
+    return _TreeCounts(directories: directoryCount, files: fileCount);
+  }
+
+  String _entityName(FileSystemEntity entity) {
+    final parts = entity.path.split(RegExp(r'[\\/]'));
+    return parts.lastWhere(
+      (part) => part.isNotEmpty,
+      orElse: () => entity.path,
+    );
   }
 
   void _startChart(List<String> commandParts) {
@@ -240,4 +384,11 @@ class HomeCubit extends Cubit<HomeState> {
     _timer?.cancel();
     return super.close();
   }
+}
+
+class _TreeCounts {
+  const _TreeCounts({this.directories = 0, this.files = 0});
+
+  final int directories;
+  final int files;
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../logic/home_cubit.dart';
 
@@ -48,7 +49,11 @@ class _Rail extends StatelessWidget {
         ),
         const SizedBox(height: 34),
         const _RailIcon(icon: Icons.terminal, active: true),
-        const _RailIcon(icon: Icons.radar),
+        _RailIcon(
+          icon: Icons.speed_outlined,
+          onTap: () => context.go('/speed-test'),
+          tooltip: 'Internet speed test',
+        ),
         const _RailIcon(icon: Icons.folder_open),
         const Spacer(),
         const _RailIcon(icon: Icons.settings_outlined),
@@ -59,18 +64,29 @@ class _Rail extends StatelessWidget {
 }
 
 class _RailIcon extends StatelessWidget {
-  const _RailIcon({required this.icon, this.active = false});
+  const _RailIcon({
+    required this.icon,
+    this.active = false,
+    this.onTap,
+    this.tooltip,
+  });
 
   final IconData icon;
   final bool active;
+  final VoidCallback? onTap;
+  final String? tooltip;
 
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 12),
-    child: Icon(
-      icon,
-      color: active ? const Color(0xff78f5c0) : const Color(0xff52616d),
-      size: 21,
+    child: IconButton(
+      onPressed: onTap,
+      tooltip: tooltip,
+      icon: Icon(
+        icon,
+        color: active ? const Color(0xff78f5c0) : const Color(0xff52616d),
+        size: 21,
+      ),
     ),
   );
 }
@@ -225,7 +241,7 @@ class _TerminalPanelState extends State<_TerminalPanel> {
           ),
           const SizedBox(height: 9),
           Text(
-            'INPUT READY  //  scan, decrypt, trace, help  //  clr wipes the console',
+            'INPUT READY  //  scan, decrypt, trace, tree, help  //  clr wipes the console',
             style: TextStyle(
               color: Color(0xff52616d),
               fontFamily: 'monospace',
